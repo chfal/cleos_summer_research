@@ -1,0 +1,149 @@
+---
+title: "mobilty_analysis"
+author: "chfal"
+date: "6/1/2020"
+output: html_document
+---
+
+```{r, echo=TRUE, results="hide"}
+library(lubridate)
+library(tidyverse)
+library(urbnmapr)
+library(sf)
+library(gganimate)
+```
+
+```{r, echo=TRUE}
+#google data cleaned and prepared for full join by renaming columns. col types argument is necessary because readr thinks default is logical because the first 1000 rows are full of NA's but we actually know it's not logical - it's characters!
+google_mobility <- read_csv("Global_Mobility_Report.csv", col_types = cols("sub_region_2" = col_character())) %>%
+  filter(country_region=="United States") %>%
+  filter(!is.na(sub_region_2)) %>%
+  rename("county"="sub_region_2") %>%
+  rename("country"="country_region") %>%
+  rename("state"="sub_region_1")
+
+#apple data cleaned and prepared for full join by renaming columns
+apple_mobility <- read_csv("applemobilitytrends.csv") %>%
+  filter(country=="United States") %>%
+  filter(geo_type=="county")
+apple_mobility <- apple_mobility[,c(1,2,5,6,3,7:145)]
+
+apple_mobility <- apple_mobility %>%
+  pivot_longer(7:144,names_to = "date", values_to = "difference_from_baseline_apple") %>%
+  rename("county"="region") %>%
+  rename("state"="sub-region") %>%
+  rename("transportation_type_apple"="transportation_type") %>%
+  mutate(date=as.Date(date, "%Y-%m-%d"))
+
+total_mobility <- left_join(google_mobility, apple_mobility)
+total_mobility <- total_mobility[,2:14]
+total_mobility %>%
+  mutate(date=as.Date(total_mobility$date, "%m/%d/%Y"))
+```
+
+
+```{r, echo=TRUE, results="hide"}
+# load directly to here by loading
+total_mobility <- read_csv("total_mobility.csv") %>%
+  mutate(date=as.Date(total_mobility$date, "%m/%d/%Y"))
+```
+
+```{r, echo=TRUE, results="hide"}
+#we summarize mobility data across counties, by state, and separated by date.
+state_summaries <- total_mobility %>%
+  group_by(state, date) %>%
+  summarize_if(is.numeric, mean,na.rm=TRUE) %>%
+  mutate(date=as.Date(date, "%m/%d/%Y"))
+
+#we get a map.
+state_sf <- get_urbn_map("states", sf=TRUE) %>%
+  st_as_sf()
+
+#this creates a data frame with sf mapping
+state_summaries <- left_join(state_summaries, state_sf, by=c("state"="state_name")) %>%
+  mutate(date=as.Date(date, "%m/%d/%Y")) %>%
+  st_as_sf()
+
+state_weekly <- state_summaries %>%
+  mutate(weeks=round_date(date, "weeks")) %>%
+  group_by(weeks) %>%
+  filter(date==min(weeks))
+```
+
+### I do not recommend running the below code. This is how I made all of the graph outputs. If you run this, it will put out a ton of graphs, which you may not need.
+
+```{r, results="hide"}
+state_weekly 
+
+residential <- ggplot() +
+  geom_sf(data=states_sf, fill="white") +
+  geom_sf(data=state_weekly, aes(fill=state_weekly$residential_percent_change_from_baseline)) +
+  labs(fill="% change residential", title="date: {current_frame}", subtitle="from google mobility data") +
+  theme(legend.title = element_text("% change residential")) +
+  scale_fill_continuous(type="viridis") +
+  transition_manual(date)
+
+animate(residential, nframes = 13, device = "png", renderer = file_renderer("C:/Users/chfal/Desktop/ICOMPBIO/CLEOS_RESEARCH_PJECT/" , prefix = "residential", overwrite = TRUE))
+
+grocery <- ggplot() +
+  geom_sf(data=states_sf, fill="white") +
+  geom_sf(data=state_weekly, aes(fill=state_weekly$grocery_and_pharmacy_percent_change_from_baseline)) +
+  labs(fill="% change grocery/pharmacy", title="date: {current_frame}", subitle="from google mobility data") +
+  theme(legend.title = element_text("% change grocery/pharmacy")) +
+  scale_fill_continuous(type="viridis") +
+  transition_manual(date)
+
+animate(grocery, nframes = 13, device = "png", renderer = file_renderer("C:/Users/chfal/Desktop/ICOMPBIO/CLEOS_RESEARCH_PJECT/" , prefix = "grocery/pharmacy", overwrite = TRUE))
+
+parks <- ggplot() +
+  geom_sf(data=states_sf, fill="white") +
+  geom_sf(data=state_weekly, aes(fill=state_weekly$parks_percent_change_from_baseline)) +
+  labs(fill="% change parks", title="date: {current_frame}", subitle="from google mobility data") +
+  theme(legend.title = element_text("% change parks")) +
+  scale_fill_continuous(type="viridis") +
+  transition_manual(date)
+
+animate(parks, nframes = 13, device = "png", renderer = file_renderer("C:/Users/chfal/Desktop/ICOMPBIO/CLEOS_RESEARCH_PJECT/" , prefix = "parks", overwrite = TRUE))
+
+
+transit <- ggplot() +
+  geom_sf(data=states_sf, fill="white") +
+  geom_sf(data=state_weekly, aes(fill=state_weekly$transit_stations_percent_change_from_baseline)) +
+  labs(fill="% change transit", title="date: {current_frame}", subitle="from google mobility data") +
+  theme(legend.title = element_text("% change transit")) +
+  scale_fill_continuous(type="viridis") +
+  transition_manual(date)
+
+animate(transit, nframes = 13, device = "png", renderer = file_renderer("C:/Users/chfal/Desktop/ICOMPBIO/CLEOS_RESEARCH_PJECT/" , prefix = "transit", overwrite = TRUE))
+
+workplaces <- ggplot() +
+  geom_sf(data=states_sf, fill="white") +
+  geom_sf(data=state_weekly, aes(fill=state_weekly$workplaces_percent_change_from_baseline)) +
+  labs(fill="% change workplaces", title="date: {current_frame}", subitle="from google mobility data") +
+  theme(legend.title = element_text("% change workplaces")) +
+  scale_fill_continuous(type="viridis") +
+  transition_manual(date)
+
+animate(workplaces, nframes = 13, device = "png", renderer = file_renderer("C:/Users/chfal/Desktop/ICOMPBIO/CLEOS_RESEARCH_PJECT/" , prefix = "workplaces", overwrite = TRUE))
+
+retail <- ggplot() +
+  geom_sf(data=states_sf, fill="white") +
+  geom_sf(data=state_weekly, aes(fill=state_weekly$retail_and_recreation_percent_change_from_baseline)) +
+  labs(fill="% change retail/recreation", title="date: {current_frame}", subitle="from google mobility data") +
+  theme(legend.title = element_text("% change retail/recreation")) +
+  scale_fill_continuous(type="viridis") +
+  transition_manual(date)
+
+animate(retail, nframes = 13, device = "png", renderer = file_renderer("C:/Users/chfal/Desktop/ICOMPBIO/CLEOS_RESEARCH_PJECT/" , prefix = "retail", overwrite = TRUE))
+
+overall <- ggplot() +
+  geom_sf(data=states_sf, fill="white") +
+  geom_sf(data=state_weekly, aes(fill=state_weekly$difference_from_baseline_apple)) +
+  labs(fill="% change baseline (apple data)", title="date: {current_frame}", subitle="from apple mobility data") +
+  theme(legend.title = element_text("% change baseline (apple data)")) +
+  scale_fill_continuous(type="viridis") +
+  transition_manual(date)
+
+animate(grocery, nframes = 13, device = "png", renderer = file_renderer("C:/Users/chfal/Desktop/ICOMPBIO/CLEOS_RESEARCH_PJECT/" , prefix = "transit", overwrite = TRUE))
+
+```
