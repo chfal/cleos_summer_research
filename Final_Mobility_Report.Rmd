@@ -1,0 +1,169 @@
+---
+title: "Mobility_Data_Final"
+author: "chfal"
+date: "6/10/2020"
+output: html_document
+---
+
+This is a self-updating script to make the graphs. It's finally in R markdown and will refresh with new data every time it is run according to the covid19mobility package.
+
+```{r setup, include=FALSE}
+library(covid19mobility)
+library(tidyverse)
+library(sf)
+library(urbnmapr)
+library(lubridate)
+library(gganimate)
+```
+
+To run this code, all you need is an Internet connection and the above packages installed in your R library. We're also using the urbnmapr package, which pulls shapefiles for mapping.
+
+```{r}
+#get google data
+google_mobility <- covid19mobility::refresh_covid19mobility_google_us_counties()
+
+#clean google data
+google_mobility <- google_mobility %>%
+  group_by(state, date, data_type) %>%
+  summarize_if(is.numeric, mean, na.rm=T) %>%
+  pivot_wider(names_from=data_type)
+
+#get apple data
+apple_mobility <- covid19mobility::refresh_covid19mobility_apple_subregion()
+
+#clean apple data
+apple_mobility <- apple_mobility %>%
+ filter(country=="United States") %>%
+  dplyr::select(c(2,3,7,8)) %>%
+  rename("state"="location")
+#get state shapefiles
+states_sf <- get_urbn_map("states",sf=TRUE)  %>%
+  rename("state"="state_name") %>%
+  st_as_sf()
+
+#get data by every two weeks by looking for distinct days
+google_date <- tibble(google_mobility$date) %>% distinct()
+
+apple_date <- tibble(apple_mobility$date) %>% distinct()
+
+# group by 14 days, starting on the first date that data was recorded
+fortnight_google <-group_by(google_date,floor_date(google_date$`google_mobility$date`, "14 days"))
+
+colnames(fortnight_google) <- c("date","start_date")
+
+fortnight_apple <- group_by(apple_date, floor_date(apple_date$`apple_mobility$date`, "14 days"))
+
+colnames(fortnight_apple) <- c("date","start_date")
+
+# join together by the starting date. now we have mean state movements over mean two week intervals.
+google_mobility2 <-left_join(google_mobility, fortnight_google)
+
+apple_mobility2 <- left_join(apple_mobility, fortnight_apple)
+
+final_mobility_google <- group_by(google_mobility2, state, start_date) %>% summarize_if(is.numeric, mean, na.rm=T)
+
+final_mobility_apple <- group_by(apple_mobility2, state, start_date, data_type) %>% summarize_if(is.numeric, mean, na.rm=T)
+```
+
+Working with shapefiles requires a lot of manipulation. We have a grouped data frame that we need to just convert to a regular data frame and remind R that it has shapefiles using the _st_as_sf()_ function.
+
+```{r}
+# join with shapefiles
+google_shapefiles <- final_mobility_google %>%
+  left_join(states_sf) %>%
+  st_as_sf()
+
+google_shapefiles <-
+  as.data.frame(google_shapefiles) %>%
+  st_as_sf()
+
+apple_shapefiles <- final_mobility_apple %>%
+  left_join(states_sf) %>%
+  st_as_sf()
+
+apple_shapefiles <-
+  as.data.frame(apple_shapefiles) %>%
+  st_as_sf()
+
+```
+
+Now we are going to plot. We have a lot of things to plot because the Google data is broken down by section. This may (is) look like a lot of copy/pasting code, but I can't do it in a for loop because I wanted each one to have its own custom title, subtitle, and prefix. 
+
+```{r}
+#plot residential data from google
+residential <- ggplot() +
+  geom_sf(data=states_sf) +
+  geom_sf(data=google_shapefiles, aes(fill=residential_percent_change_from_baseline)) +
+  labs(fill="% change residential", title="date: {current_frame}", subtitle="Percent Change in Residential Movement from Google Mobility Data") +
+  theme(legend.title = element_text("% change residential")) +
+  scale_fill_continuous(type="viridis") +
+  transition_manual(start_date)
+
+animate(residential, device = "png", renderer = file_renderer("C:/Users/chfal/Desktop/ICOMPBIO/CLEOS_RESEARCH_PJECT/" , prefix = "residential"))
+
+#plot grocery data from google
+grocery <- ggplot() +
+  geom_sf(data=states_sf) +
+  geom_sf(data=google_shapefiles, aes(fill=grocery_and_pharmacy_percent_change_from_baseline)) +
+  labs(fill="% change grocery/pharmacy", title="date: {current_frame}", subtitle="Percent Change in Grocery/Pharmacy Visits from Google Mobility Data") +
+  theme(legend.title = element_text("% change grocery")) +
+  scale_fill_continuous(type="viridis") +
+  transition_manual(start_date)
+
+animate(grocery, device = "png", renderer = file_renderer("C:/Users/chfal/Desktop/ICOMPBIO/CLEOS_RESEARCH_PJECT/" , prefix = "grocery"))
+
+#plot park data from google
+parks <- ggplot() +
+  geom_sf(data=states_sf) +
+  geom_sf(data=google_shapefiles, aes(fill=parks_percent_change_from_baseline)) +
+  labs(fill="% change parks", title="date: {current_frame}", subtitle="Percent Change in Park Visits from Google Mobility Data") +
+  theme(legend.title = element_text("% change parks")) +
+  scale_fill_continuous(type="viridis") +
+  transition_manual(start_date)
+
+animate(parks, device = "png", renderer = file_renderer("C:/Users/chfal/Desktop/ICOMPBIO/CLEOS_RESEARCH_PJECT/" , prefix = "parks"))
+
+#plot transit data from google
+transit <- ggplot() +
+  geom_sf(data=states_sf) +
+  geom_sf(data=google_shapefiles, aes(fill=transit_stations_percent_change_from_baseline)) +
+  labs(fill="% change transit", title="date: {current_frame}", subtitle="Percent Change in Transit Usage from Google Mobility Data") +
+  theme(legend.title = element_text("% change transit")) +
+  scale_fill_continuous(type="viridis") +
+  transition_manual(start_date)
+
+animate(transit, device = "png", renderer = file_renderer("C:/Users/chfal/Desktop/ICOMPBIO/CLEOS_RESEARCH_PJECT/" , prefix = "transit"))
+
+#plot workplace visit data from google
+workplaces <- ggplot() +
+  geom_sf(data=states_sf) +
+  geom_sf(data=google_shapefiles, aes(fill=workplaces_percent_change_from_baseline)) +
+  labs(fill="% change workplaces", title="date: {current_frame}", subtitle="Percent Change in Workplace Visits from Google Mobility Data") +
+  theme(legend.title = element_text("% change workplaces")) +
+  scale_fill_continuous(type="viridis") +
+  transition_manual(start_date)
+
+animate(workplaces, device = "png", renderer = file_renderer("C:/Users/chfal/Desktop/ICOMPBIO/CLEOS_RESEARCH_PJECT/" , prefix = "workplaces"))
+
+#plot retail data from google
+retail <- ggplot() +
+  geom_sf(data=states_sf) +
+  geom_sf(data=google_shapefiles, aes(fill=retail_and_recreation_percent_change_from_baseline)) +
+  labs(fill="% change retail", title="date: {current_frame}", subtitle="Percent Change in Retail/Recreation from Google Mobility Data") +
+  theme(legend.title = element_text("% change retail")) +
+  scale_fill_continuous(type="viridis") +
+  transition_manual(start_date)
+
+animate(retail, device = "png", renderer = file_renderer("C:/Users/chfal/Desktop/ICOMPBIO/CLEOS_RESEARCH_PJECT/" , prefix = "retail"))
+
+#plot apple data
+apple <- ggplot() +
+  geom_sf(data=states_sf) +
+  geom_sf(data=apple_shapefiles, aes(fill=value)) +
+  labs(fill="% change driving", title="date: {current_frame}", subtitle="Percent Change in Driving Activity from Apple Mobility Data") +
+  theme(legend.title = element_text("% change driving")) +
+  scale_fill_continuous(type="viridis") +
+  transition_manual(start_date)
+
+animate(apple, device="png", renderer=file_renderer("C:/Users/chfal/Desktop/ICOMPBIO/CLEOS_RESEARCH_PJECT/" , prefix = "apple_driving"))
+```
