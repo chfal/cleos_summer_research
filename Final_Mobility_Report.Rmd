@@ -36,18 +36,21 @@ apple_mobility <- apple_mobility %>%
  filter(country=="United States") %>%
   dplyr::select(c(2,3,7,8)) %>%
   rename("state"="location")
+
 #get state shapefiles
 states_sf <- get_urbn_map("states",sf=TRUE)  %>%
   rename("state"="state_name") %>%
   st_as_sf()
 
 #get data by every two weeks by looking for distinct days
-google_date <- tibble(google_mobility$date) %>% distinct()
+google_date <- tibble(google_mobility$date) %>% distinct() %>%
+  filter(`google_mobility$date`>="2020-02-15")
 
-apple_date <- tibble(apple_mobility$date) %>% distinct()
+apple_date <- tibble(apple_mobility$date) %>% distinct() %>%
+  filter(`apple_mobility$date`>="2020-02-15")
 
 # group by 14 days, starting on the first date that data was recorded
-fortnight_google <-group_by(google_date,floor_date(google_date$`google_mobility$date`, "14 days"))
+fortnight_google <-group_by(google_date,floor_date(google_date$`google_mobility$date`, "7 days"))
 
 colnames(fortnight_google) <- c("date","start_date")
 
@@ -110,7 +113,7 @@ grocery <- ggplot() +
   scale_fill_continuous(type="viridis") +
   transition_manual(start_date)
 
-animate(grocery, device = "png", renderer = file_renderer("C:/Users/chfal/Desktop/ICOMPBIO/CLEOS_RESEARCH_PJECT/" , prefix = "grocery"))
+# animate(grocery, device = "png", renderer = file_renderer("C:/Users/chfal/Desktop/ICOMPBIO/CLEOS_RESEARCH_PJECT/" , prefix = "grocery"))
 
 #plot park data from google
 parks <- ggplot() +
@@ -121,7 +124,7 @@ parks <- ggplot() +
   scale_fill_continuous(type="viridis") +
   transition_manual(start_date)
 
-animate(parks, device = "png", renderer = file_renderer("C:/Users/chfal/Desktop/ICOMPBIO/CLEOS_RESEARCH_PJECT/" , prefix = "parks"))
+# animate(parks, device = "png", renderer = file_renderer("C:/Users/chfal/Desktop/ICOMPBIO/CLEOS_RESEARCH_PJECT/" , prefix = "parks"))
 
 #plot transit data from google
 transit <- ggplot() +
@@ -132,7 +135,7 @@ transit <- ggplot() +
   scale_fill_continuous(type="viridis") +
   transition_manual(start_date)
 
-animate(transit, device = "png", renderer = file_renderer("C:/Users/chfal/Desktop/ICOMPBIO/CLEOS_RESEARCH_PJECT/" , prefix = "transit"))
+# animate(transit, device = "png", renderer = file_renderer("C:/Users/chfal/Desktop/ICOMPBIO/CLEOS_RESEARCH_PJECT/" , prefix = "transit"))
 
 #plot workplace visit data from google
 workplaces <- ggplot() +
@@ -143,7 +146,7 @@ workplaces <- ggplot() +
   scale_fill_continuous(type="viridis") +
   transition_manual(start_date)
 
-animate(workplaces, device = "png", renderer = file_renderer("C:/Users/chfal/Desktop/ICOMPBIO/CLEOS_RESEARCH_PJECT/" , prefix = "workplaces"))
+# animate(workplaces, device = "png", renderer = file_renderer("C:/Users/chfal/Desktop/ICOMPBIO/CLEOS_RESEARCH_PJECT/" , prefix = "workplaces"))
 
 #plot retail data from google
 retail <- ggplot() +
@@ -154,7 +157,7 @@ retail <- ggplot() +
   scale_fill_continuous(type="viridis") +
   transition_manual(start_date)
 
-animate(retail, device = "png", renderer = file_renderer("C:/Users/chfal/Desktop/ICOMPBIO/CLEOS_RESEARCH_PJECT/" , prefix = "retail"))
+# animate(retail, device = "png", renderer = file_renderer("C:/Users/chfal/Desktop/ICOMPBIO/CLEOS_RESEARCH_PJECT/" , prefix = "retail"))
 
 #plot apple data
 apple <- ggplot() +
@@ -165,5 +168,5 @@ apple <- ggplot() +
   scale_fill_continuous(type="viridis") +
   transition_manual(start_date)
 
-animate(apple, device="png", renderer=file_renderer("C:/Users/chfal/Desktop/ICOMPBIO/CLEOS_RESEARCH_PJECT/" , prefix = "apple_driving"))
+# animate(apple, device="png", renderer=file_renderer("C:/Users/chfal/Desktop/ICOMPBIO/CLEOS_RESEARCH_PJECT/" , prefix = "apple_driving"))
 ```
