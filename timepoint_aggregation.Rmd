@@ -7,6 +7,7 @@ output: html_document
 
 ```{r}
 library(tidyverse)
+library(data.table)
 # this is a function i may have shamelessly stolen off the internet. link here: https://www.r-bloggers.com/merging-multiple-data-files-into-one-data-frame/
 multmerge = function(mypath){
   filenames=list.files(path=mypath, full.names=TRUE)
@@ -17,12 +18,20 @@ multmerge = function(mypath){
 #don't judge my variable names.
 smaller_dataset <- multmerge("C:/Users/chfal/Desktop/ICOMPBIO/parse_GRIB_JHUCSSE_COVID19-master/39-timepoints/") # this is the path to a directory with ONLY the CSV files in it. DO NOT PUT ANYTHING ELSE IN THE DIRECTORY!
 
+neworder_small <-c(colnames(smaller_dataset[,1:12]),sort(colnames(smaller_dataset[,13:51]))) 
+
+smaller_dataset<- setcolorder(smaller_dataset,neworder_small)
 #write out the data!
 write_csv(smaller_dataset, "aggregated_data_39_timepoints.csv")
 
+
+
 larger_dataset <- multmerge("C:/Users/chfal/Desktop/ICOMPBIO/parse_GRIB_JHUCSSE_COVID19-master/156timepoints/") # this is the path to a directory with ONLY the CSV files in it. DO NOT PUT ANYTHING ELSE IN THE DIRECTORY!
 
-write_csv(larger_dataset, "aggregated_data_156_timepoints.csv")
+neworder_large <- c(colnames(larger_dataset[,1:12]), sort(colnames(larger_dataset[13:168])))
 
+larger_dataset <- setcolorder(larger_dataset, neworder_large)
+
+write_csv(larger_dataset, "aggregated_data_156_timepoints.csv")
 
 ```
