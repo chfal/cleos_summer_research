@@ -1,0 +1,28 @@
+---
+title: "Merging_Files"
+author: "chfal"
+date: "6/15/2020"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+# this is a function i may have shamelessly stolen off the internet. link here: https://www.r-bloggers.com/merging-multiple-data-files-into-one-data-frame/
+multmerge = function(mypath){
+  filenames=list.files(path=mypath, full.names=TRUE)
+  datalist = lapply(filenames, function(x){read_csv(file=x)})
+  Reduce(function(x,y){left_join(x,y, by=c("X1", "UID", "iso2", "iso3", "code3", "FIPS", "Admin2", "Province_State", "Country_Region", "Lat", "Long_", "Combined_Key"))}, datalist) #list of common variables to join by
+}
+
+#don't judge my variable names.
+smaller_dataset <- multmerge("C:/Users/chfal/Desktop/ICOMPBIO/parse_GRIB_JHUCSSE_COVID19-master/39-timepoints/") # this is the path to a directory with ONLY the CSV files in it. DO NOT PUT ANYTHING ELSE IN THE DIRECTORY!
+
+#write out the data!
+write_csv(smaller_dataset, "aggregated_data_39_timepoints.csv")
+
+larger_dataset <- multmerge("C:/Users/chfal/Desktop/ICOMPBIO/parse_GRIB_JHUCSSE_COVID19-master/156timepoints/") # this is the path to a directory with ONLY the CSV files in it. DO NOT PUT ANYTHING ELSE IN THE DIRECTORY!
+
+write_csv(larger_dataset, "aggregated_data_156_timepoints.csv")
+
+
+```
