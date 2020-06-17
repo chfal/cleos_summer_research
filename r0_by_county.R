@@ -34,10 +34,8 @@ raw_cases_na_removed <- na.omit(raw_cases_county)
 
 # in order to do this we can either set the population to 1000000 for any NAs in the population OR we can just remove them. we could do it two ways depending on what works better. for now, let's just trim the data set but i'll ask dr. qin on Monday
 
-
-
 #selecting only the case counts, population data, and state to make a new matrix
-case_counts_edited = raw_cases_na_removed[,c(12:150)]
+case_counts_edited = raw_cases_na_removed[,c(12:159)]
 case_counts_edited <- as.matrix(case_counts_edited)
 rownames(case_counts_edited) = raw_cases_na_removed$Combined_Key
 
@@ -72,13 +70,13 @@ result_df <- data.frame(County=character(), Week=character(),R0=double())
 
 # implement case count to be lower
 for (i in 1:nrow(case_counts_final)){ # we are going to iterate over all the counties
-    for (j in 1:9){ #add cases to be cumulative across the fortnight
+    for (j in 1:10){ #add cases to be cumulative across the fortnight
     x=case_counts_final[i,(fortnight[j]+1):fortnight[j+1]]
     if (sum(x)<=10) { #cutoff is now less than 10 cases in a fortnight
       R0=NA
     }
     else{
-      R0EG = estimate.R(case_counts_final[i,], GT=mGT,  methods=c('EG'), pop.size = tb4[,138], nsim=10, begin=fortnight[j]+1, end=fortnight[j+1])
+      R0EG = estimate.R(case_counts_final[i,], GT=mGT,  methods=c('EG'), pop.size = case_counts_final[,147], nsim=10, begin=fortnight[j]+1, end=fortnight[j+1])
       R0 = R0EG$estimates$EG$R
     }
     result_df[l,1]=rownames(case_counts_final)[i]
@@ -88,22 +86,22 @@ for (i in 1:nrow(case_counts_final)){ # we are going to iterate over all the cou
   }
 }
 
-#merge result df back to longitude/latitude
-
-Week <- as.character(c(1:9))
-dates <- colnames(case_counts[,c(0,7,14,21,28,35,42,49,56,63)])
+#assign dates back to week because those got removed during for loop processing
+Week <- as.character(c(1:10))
+dates <- colnames(case_counts_final[,fortnight])
 
 positions <- data.frame(Week, dates)
 
-result_df <- left_join(result_df, positions)
+#merge result df back to longitude/latitude
+result_df2 <- left_join(result_df, positions)
 
-result_df <- left_join(result_df, latlong, by=c("County"="Combined_Key"))
+result_df3 <- left_join(result_df2, latlong, by=c("County"="Combined_Key"))
 
 # cut quantiles
-result_df$R0[result_df$R0>quantile(result_df$R0, .95, na.rm=T)] <- NA
-result_df$R0[result_df$R0<quantile(result_df$R0, .05, na.rm=T)] <- NA
+result_df3$R0[result_df$R0>quantile(result_df$R0, .95, na.rm=T)] <- NA
+result_df3$R0[result_df$R0<quantile(result_df$R0, .05, na.rm=T)] <- NA
 
-result_df 
+result_df3
 
 # this is what the result looks like, write it to the working directory
-write_csv(result_df, "county_r0_estimates_w_latlong.csv")
+write_csv(result_df3, "county_r0_estimates_w_latlong.csv")
