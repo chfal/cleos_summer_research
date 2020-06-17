@@ -90,6 +90,13 @@ for (i in 1:nrow(case_counts_final)){ # we are going to iterate over all the cou
 
 #merge result df back to longitude/latitude
 
+Week <- as.character(c(1:9))
+dates <- colnames(case_counts[,c(0,7,14,21,28,35,42,49,56,63)])
+
+positions <- data.frame(Week, dates)
+
+result_df <- left_join(result_df, positions)
+
 result_df <- left_join(result_df, latlong, by=c("County"="Combined_Key"))
 
 # cut quantiles
