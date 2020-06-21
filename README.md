@@ -1,2 +1,2 @@
 # cleos_summer_research
- unholy code about covid-19 mobility data.
+ seriously unholy code about covid-19 mobility data, r0, and weather.
