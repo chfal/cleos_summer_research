@@ -1,0 +1,32 @@
+---
+title: "Multiple Regression"
+author: "Cleo and Jamaree"
+date: "6/25/2020"
+output: html_document
+---
+
+```{r, warning=FALSE, error=FALSE, message=FALSE}
+#correlating r0 by temperature with aggregated data and temp data 
+
+library(readr)
+library(dplyr)
+library(tidyr)
+library(lubridate)
+library(chron)
+library(correlation)
+
+
+```
+
+```{r}
+multreg <- read.csv("r0_county_temperature_google_mobility.csv")
+
+#take mean of social distancing data
+multreg$mean <- rowMeans(multreg[,c(12,13,14,15,16,17)], na.rm=T)
+
+head(multreg)
+
+lm(multreg$R0~multreg$temp_in_K+multreg$mean)
+summary(lm(multreg$R0~multreg$temp_in_K))
+plot(lm(multreg$R0~multreg$temp_in_K+multreg$mean))
+```
