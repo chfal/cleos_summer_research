@@ -16,7 +16,7 @@ multmerge = function(mypath){
 }
 
 #don't judge my variable names.
-smaller_dataset <- multmerge("C:/Users/chfal/Desktop/ICOMPBIO/parse_GRIB_JHUCSSE_COVID19-master/39-timepoints/") # this is the path to a directory with ONLY the CSV files in it. DO NOT PUT ANYTHING ELSE IN THE DIRECTORY!
+smaller_dataset <- multmerge("C:/Users/chfal/Desktop/ICOMPBIO/CLEOS_RESEARCH_PJECT/parsing_weather_data/39-timepoints/") # this is the path to a directory with ONLY the CSV files in it. DO NOT PUT ANYTHING ELSE IN THE DIRECTORY!
 
 neworder_small <-c(colnames(smaller_dataset[,1:12]),sort(colnames(smaller_dataset[,13:51]))) 
 
@@ -26,7 +26,7 @@ write_csv(smaller_dataset, "aggregated_data_39_timepoints.csv")
 
 
 
-larger_dataset <- multmerge("C:/Users/chfal/Desktop/ICOMPBIO/parse_GRIB_JHUCSSE_COVID19-master/156timepoints/") # this is the path to a directory with ONLY the CSV files in it. DO NOT PUT ANYTHING ELSE IN THE DIRECTORY!
+larger_dataset <- multmerge("C:/Users/chfal/Desktop/ICOMPBIO/CLEOS_RESEARCH_PJECT/parsing_weather_data/156timepoints/") # this is the path to a directory with ONLY the CSV files in it. DO NOT PUT ANYTHING ELSE IN THE DIRECTORY!
 
 neworder_large <- c(colnames(larger_dataset[,1:12]), sort(colnames(larger_dataset[13:168])))
 
