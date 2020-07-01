@@ -202,7 +202,7 @@ We need to read in the data. I used the US Census 2019 database to obtain the po
 
 ```{r, error=FALSE, message=FALSE, warning=FALSE, out.width="100%"}
 #original data from Johns Hopkins
-original_data = read_csv("time_series_covid19_confirmed_US_1.csv")
+original_data = read_csv("time_series_covid19_confirmed_US.csv")
 
 #population data from 2019 US government database
 pop_est <- read_csv("pop_est.csv") %>%
@@ -215,7 +215,7 @@ cases_with_pop <- left_join(original_data, pop_est) %>%
   summarize_if(is.numeric, sum, na.rm=TRUE)
 
 #selecting only the case counts, population data, and state to make a new matrix
-case_counts_raw = cases_with_pop[,30:160]
+case_counts_raw = cases_with_pop[,30:166]
 case_counts_raw <- as.matrix(case_counts_raw)
 rownames(case_counts_raw) = cases_with_pop$Province_State
 
@@ -239,7 +239,7 @@ mGT = generation.time("gamma", c(3, 1.5))
 case_counts[case_counts<0]=0
 
 # removed all cases where you didn't know what the population was
-case_counts <- case_counts[case_counts[,130] !=0,]
+case_counts <- case_counts[case_counts[,136] !=0,]
 
 weekly <- seq(0,ncol(case_counts), by=7)
 
@@ -253,7 +253,7 @@ r0 <- data.frame(State=character(), Week=character(),R0=double())
 
 # implement case count to be lower
 for (i in 1:nrow(case_counts)){ # we are going to iterate over all the states
-  for (j in 1:18){ #add cases to be cumulative across the week
+  for (j in 1:19){ #add cases to be cumulative across the week
     x=case_counts[i,(weekly[j]+1):weekly[j+1]]
     if (sum(x)<=10) { #cutoff is now less than 10 cases in a week
       R0=NA
@@ -308,55 +308,40 @@ corr_apple <- left_join(final_mobility_apple, r0, by =c("start_date"="date", "st
 corr_google <- right_join(final_mobility_google,r0, by=c("start_date"="date","state"="State"))
 ```
 
-Now we need to make linear models of these variables so we can understand how they are correlated together. We want to use R0 as the y-variable and the mobility scores as the x-variable.
+Now we are going to add the weather data!
 
-```{r, error=FALSE, message=FALSE, warning=FALSE, out.width="100%"}
+```{r}
+weather <- read_csv("aggregated_data_156_timepoints.csv")
 
-lm(corr_google$R0~corr_google$grocery_and_pharmacy_percent_change_from_baseline)
-summary(lm(corr_google$R0~corr_google$grocery_and_pharmacy_percent_change_from_baseline)
-)
-plot(lm(corr_google$R0~corr_google$grocery_and_pharmacy_percent_change_from_baseline))
+weather <- weather %>%
+  pivot_longer(c(13:168),names_to="date",values_to="temp_in_K")
+
+weather <- weather %>%
+  mutate(date=ymd(weather$date))
+
+weather <- weather %>%
+  filter(date>="2020-02-15")
+
+weather$start_date =cut(weather$date, breaks="7 days")
+
+weather <- weather %>%
+  group_by(Province_State, start_date) %>%
+  summarize_if(is.numeric, mean, na.rm=T)
+
+weather$start_date <- as.Date(weather$start_date, "%Y-%m-%d")
+
+weather_total <- weather %>% dplyr::select("Province_State", "start_date", "temp_in_K")
+```
+
+
+Now we are going to make the final data set for correlating.
+```{r}
+final_google_corr <- left_join(corr_google, weather_total, by=c("state"="Province_State", "start_date"="start_date"))
+write_csv(final_google_corr, "final_google_corr.csv")
+
+final_apple_corr <- left_join(corr_apple, weather_total, by=c("state"="Province_State", "start_date"="start_date"))
+write_csv(final_apple_corr, "final_apple_corr.csv")
 
 ```
 
-```{r, error=FALSE, message=FALSE, warning=FALSE, out.width="100%"}
 
-lm(corr_google$R0~corr_google$parks_percent_change_from_baseline)
-summary(lm(corr_google$R0~corr_google$parks_percent_change_from_baseline))
-plot(lm(corr_google$R0~corr_google$parks_percent_change_from_baseline))
-```
-
-```{r, error=FALSE, message=FALSE, warning=FALSE, out.width="100%"}
-
-lm(corr_google$R0~corr_google$residential_percent_change_from_baseline)
-summary(lm(corr_google$R0~corr_google$residential_percent_change_from_baseline))
-plot(lm(corr_google$R0~corr_google$residential_percent_change_from_baseline))
-```
-
-```{r, error=FALSE, message=FALSE, warning=FALSE, out.width="100%"}
-
-lm(corr_google$R0~corr_google$retail_and_recreation_percent_change_from_baseline)
-summary(lm(corr_google$R0~corr_google$retail_and_recreation_percent_change_from_baseline))
-plot(lm(corr_google$R0~corr_google$retail_and_recreation_percent_change_from_baseline))
-```
-
-```{r, error=FALSE, message=FALSE, warning=FALSE, out.width="100%"}
-
-lm(corr_google$R0~corr_google$transit_stations_percent_change_from_baseline)
-summary(lm(corr_google$R0~corr_google$transit_stations_percent_change_from_baseline))
-plot(lm(corr_google$R0~corr_google$transit_stations_percent_change_from_baseline))
-```
-
-```{r, error=FALSE, message=FALSE, warning=FALSE, out.width="100%"}
-
-lm(corr_google$R0~corr_google$workplaces_percent_change_from_baseline)
-summary(lm(corr_google$R0~corr_google$workplaces_percent_change_from_baseline))
-plot(lm(corr_google$R0~corr_google$workplaces_percent_change_from_baseline))
-```
-
-```{r, error=FALSE, message=FALSE, warning=FALSE, out.width="100%"}
-lm(corr_apple$R0~corr_apple$value)
-summary(lm(corr_apple$R0~corr_apple$value)
-)
-plot(lm(corr_apple$R0~corr_apple$value))
-```
