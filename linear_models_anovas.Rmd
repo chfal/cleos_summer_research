@@ -1,0 +1,82 @@
+---
+title: "Analyses Part II"
+author: "chfal"
+date: "6/30/2020"
+output: html_document
+---
+
+Here are the packages needed.
+
+```{r}
+library(tidyverse)
+library(dplyr)
+library(MASS)
+library(lme4)
+library(glmmTMB)
+library(gamm4)
+library(xts)
+```
+
+
+```{r}
+# read in data
+final_apple <- read_csv("final_apple_corr.csv")
+
+final_google <- read_csv("final_google_corr.csv")
+```
+
+```{r}
+# make two for google data: one with all means across column and one with all means except housing increase
+final_google$expected_decrease <- base::rowMeans(final_google[,c(3,4,6,7,8)])
+
+final_google$all_mean <- rowMeans(final_google[,c(3,4,5,6,7,8)])
+```
+
+
+```{r}
+# corelation offset by two weeks using lag operator
+lag <- final_google %>%
+  dplyr::select(c("start_date", "state", "R0")) %>%
+  group_by(state) %>%
+  mutate(lagged_R0 = lag(R0)) %>%
+  mutate(lagged_R0 = lag(lagged_R0))
+
+
+lagged_google <- left_join(lag, final_google, by=c("start_date", "state", "R0"))
+lagged_apple <- left_join(lag, final_apple, by=c("start_date", "state", "R0"))
+```
+
+Now we are going to correllate with lagged data. We still have a lot of noise. We should think about binning and also controlling by state? Could state be a categorical factor which might explain a lot of the variation?
+
+```{r}
+plot(lagged_google$lagged_R0, lagged_google$expected_decrease)
+lm(lagged_google$lagged_R0 ~ lagged_google$expected_decrease, na.rm=T)
+summary(lm(lagged_google$lagged_R0 ~ lagged_google$expected_decrease, na.rm=T))
+#adjusted r-squareed is .059
+```
+
+Comparing we can see that there is 
+```{r}
+plot(lagged_google$R0, lagged_google$expected_decrease)
+lm(lagged_google$R0 ~ lagged_google$expected_decrease, na.rm=T)
+summary(lm(lagged_google$R0 ~ lagged_google$expected_decrease, na.rm=T))
+# r_squared value is .00132
+
+```
+
+```{r}
+plot(lagged_apple$lagged_R0, lagged_apple$value)
+lm(lagged_apple$lagged_R0~lagged_apple$value)
+summary(lm(lagged_apple$lagged_R0~lagged_apple$value))
+```
+
+```{r}
+aov(lagged_apple$lagged_R0 ~ lagged_apple$value*lagged_apple$temp_in_K)
+lm(lagged_apple$lagged_R0 ~ lagged_apple$temp_in_K)
+```
+
+```{r}
+plot(lagged_apple$lagged_R0, lagged_apple$temp_in_K)
+summary(lm(lagged_apple$lagged_R0 ~ lagged_apple$temp_in_K))
+
+```
