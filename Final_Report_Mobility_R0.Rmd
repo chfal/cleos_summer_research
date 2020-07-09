@@ -202,7 +202,7 @@ We need to read in the data. I used the US Census 2019 database to obtain the po
 
 ```{r, error=FALSE, message=FALSE, warning=FALSE, out.width="100%"}
 #original data from Johns Hopkins
-original_data = read_csv("time_series_covid19_confirmed_US.csv")
+original_data <- read_csv("time_series_covid19_confirmed_US.csv")
 
 #population data from 2019 US government database
 pop_est <- read_csv("pop_est.csv") %>%
@@ -215,7 +215,7 @@ cases_with_pop <- left_join(original_data, pop_est) %>%
   summarize_if(is.numeric, sum, na.rm=TRUE)
 
 #selecting only the case counts, population data, and state to make a new matrix
-case_counts_raw = cases_with_pop[,30:166]
+case_counts_raw = cases_with_pop[,30:175]
 case_counts_raw <- as.matrix(case_counts_raw)
 rownames(case_counts_raw) = cases_with_pop$Province_State
 
@@ -253,13 +253,13 @@ r0 <- data.frame(State=character(), Week=character(),R0=double())
 
 # implement case count to be lower
 for (i in 1:nrow(case_counts)){ # we are going to iterate over all the states
-  for (j in 1:19){ #add cases to be cumulative across the week
+  for (j in 1:20){ #add cases to be cumulative across the week
     x=case_counts[i,(weekly[j]+1):weekly[j+1]]
     if (sum(x)<=10) { #cutoff is now less than 10 cases in a week
       R0=NA
     }
     else{
-      R0EG = estimate.R(case_counts[i,], GT=mGT,  methods=c('EG'), pop.size = case_counts[,138], nsim=10, begin=weekly[j]+1, end=weekly[j+1])
+      R0EG = estimate.R(case_counts[i,], GT=mGT,  methods=c('EG'), pop.size = case_counts[,145], nsim=10, begin=weekly[j]+1, end=weekly[j+1])
       R0 = R0EG$estimates$EG$R
     }
     r0[l,1]=rownames(case_counts)[i]
@@ -277,8 +277,8 @@ r0$R0[r0$R0>quantile(r0$R0, .95, na.rm=T)] <- NA
 r0$R0[r0$R0<quantile(r0$R0, .05, na.rm=T)] <- NA
 
 #add labels to each week's start date
-Week <- as.character(c(1:19))
-dates <- colnames(case_counts[,c(1,8,15,22,29,36,43,50,57,64,71,78,85,92,99,106,113,120, 127)])
+Week <- as.character(c(1:20))
+dates <- colnames(case_counts[,c(1,8,15,22,29,36,43,50,57,64,71,78,85,92,99,106,113,120,127,134)])
 
 positions <- data.frame(Week, dates)
 
@@ -334,12 +334,36 @@ weather_total <- weather %>% dplyr::select("Province_State", "start_date", "temp
 ```
 
 
+# Mask wearing
+
+We got this data from: https://masks4all.co/what-states-require-masks/
+```{r}
+#read in mask data
+masks <- read_csv("maskdata.csv") %>%
+  dplyr::select(state, date) %>%
+  mutate(mask_date=as.Date(date, "%m/%d/%y")) %>%
+  dplyr::select(state, mask_date)
+
+#join to correlation
+corr_google2 <- full_join(corr_google, masks, by=c("state"="state"))
+corr_apple2 <- full_join(corr_apple, masks, by=c("state"="state"))
+
+#add logical vector masks_worn which asks whether masks were worn or not by state mandate
+corr_google2$masks_worn <-(corr_google2$start_date > corr_google2$mask_date)
+corr_apple2$masks_worn <- (corr_apple2$start_date > corr_apple2$mask_date)
+
+#if all NA that means masks were never worn, so set it to false
+corr_google2[,11][is.na(corr_google2[,11])] <- FALSE
+corr_apple2[,7][is.na(corr_apple2[,7])] <- FALSE
+
+```
+
 Now we are going to make the final data set for correlating.
 ```{r}
-final_google_corr <- left_join(corr_google, weather_total, by=c("state"="Province_State", "start_date"="start_date"))
+final_google_corr <- left_join(corr_google2, weather_total, by=c("state"="Province_State", "start_date"="start_date"))
 write_csv(final_google_corr, "final_google_corr.csv")
 
-final_apple_corr <- left_join(corr_apple, weather_total, by=c("state"="Province_State", "start_date"="start_date"))
+final_apple_corr <- left_join(corr_apple2, weather_total, by=c("state"="Province_State", "start_date"="start_date"))
 write_csv(final_apple_corr, "final_apple_corr.csv")
 
 ```
