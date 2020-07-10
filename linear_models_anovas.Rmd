@@ -76,7 +76,33 @@ lm(lagged_apple$lagged_R0 ~ lagged_apple$temp_in_K)
 ```
 
 ```{r}
-plot(lagged_apple$lagged_R0, lagged_apple$temp_in_K)
-summary(lm(lagged_apple$lagged_R0 ~ lagged_apple$temp_in_K))
+plot(1/lagged_apple$temp_in_K, log(lagged_apple$lagged_R0))
+summary(lm(log(lagged_apple$lagged_R0) ~ 1/lagged_apple$temp_in_K))
 
+```
+
+
+# Mobility and Masks - Google
+
+```{r}
+aov(lagged_google$R0 ~ lagged_google$expected_decrease + lagged_google$masks_worn)
+summary(aov(lagged_google$R0 ~ lagged_google$expected_decrease + lagged_google$masks_worn))
+```
+
+# Mobility and Masks - Apple
+```{r}
+aov(lagged_apple$R0 ~ lagged_apple$value + lagged_apple$masks_worn)
+summary(aov(lagged_apple$R0 ~ lagged_apple$value + lagged_apple$masks_worn))
+```
+
+# States and Mobility Data - Apple
+```{r}
+aov(lagged_apple$R0 ~ lagged_apple$value + lagged_apple$state)
+summary(aov(lagged_apple$R0 ~ lagged_apple$value + lagged_apple$state))
+```
+
+# States and Mobility - Google
+```{r}
+aov(lagged_google$R0 ~ lagged_google$expected_decrease + lagged_google$state)
+summary(aov(lagged_google$R0 ~ lagged_google$expected_decrease + lagged_google$state))
 ```
