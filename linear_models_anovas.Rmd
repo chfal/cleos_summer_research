@@ -8,13 +8,14 @@ output: html_document
 Here are the packages needed.
 
 ```{r}
-library(tidyverse)
-library(dplyr)
-library(MASS)
-library(lme4)
-library(glmmTMB)
-library(gamm4)
-library(xts)
+library(readr) # for reading data
+library(dplyr) # for cleaning data
+library(MASS) # for analysis
+library(lme4) # for analysis
+library(glmmTMB) # for analysis
+library(gamm4) # for analysis
+library(xts) # to cut 
+library(ggplot2)
 ```
 
 
@@ -56,13 +57,6 @@ summary(lm(lagged_google$lagged_R0 ~ lagged_google$expected_decrease, na.rm=T))
 ```
 
 Comparing we can see that there is 
-```{r}
-plot(lagged_google$R0, lagged_google$expected_decrease)
-lm(lagged_google$R0 ~ lagged_google$expected_decrease, na.rm=T)
-summary(lm(lagged_google$R0 ~ lagged_google$expected_decrease, na.rm=T))
-# r_squared value is .00132
-
-```
 
 ```{r}
 plot(lagged_apple$lagged_R0, lagged_apple$value)
@@ -105,4 +99,69 @@ summary(aov(lagged_apple$R0 ~ lagged_apple$value + lagged_apple$state))
 ```{r}
 aov(lagged_google$R0 ~ lagged_google$expected_decrease + lagged_google$state)
 summary(aov(lagged_google$R0 ~ lagged_google$expected_decrease + lagged_google$state))
+```
+
+
+# Let's make some sick graphs lol
+
+## Mask Data on R0 by State
+
+```{r, out.width="100%"}
+ggplot(lagged_google, aes(lagged_R0, fill=state)) +
+  geom_boxplot() +
+  facet_wrap(~state) +
+  theme(legend.position="none", axis.title.y=element_blank(), axis.text.y=element_blank(), axis.ticks.y=element_blank()) +
+  labs(title="R0 by State") +
+  ggsave("state_r0.png")
+
+#all states
+ggplot(lagged_google, aes(x=masks_worn, y=lagged_R0)) +
+  geom_boxplot() +
+  facet_wrap(~state)
+
+# this is too crazy, let's make it states with mask mandatesa
+states_w_masks <- lagged_google %>%
+  filter_at(vars(state), any_vars(TRUE %in% c(masks_worn)))
+
+ggplot(data=states_w_masks, aes(x=masks_worn, y=R0, fill=masks_worn)) +
+  geom_boxplot() +
+  facet_wrap(~state) +
+  theme(legend.position="none") +
+  scale_x_discrete(breaks=c("TRUE", "FALSE"), labels=c("Masks", "No Masks")) +
+  labs(x="Mask Mandate", y="R0", title="R0 before and after Statewide Mask Mandates") +
+  ggsave("state_w_masks_r0.png")
+```
+
+## Weather and R0 by State
+
+```{r, out.width="100%"}
+ggplot(lagged_apple, aes(x=temp_in_K, y=R0, color=state)) + 
+  geom_point() +
+  facet_wrap(~state) +
+  labs(title="Weather and R0 by State") +
+  theme(legend.position="none") +
+  ggsave("weather_r0.png")
+
+
+```
+
+
+```{r, out.width="100%"}
+ggplot(lagged_apple, aes(x=value, y=lagged_R0, color=state)) +
+  geom_point() +
+  facet_wrap(~state) +
+  labs(title="Apple Mobility Data and R0, Lagged by Two Weeks, by State") +
+  theme(legend.position="none") +
+  ggsave("apple_mobility_r0_lagged.png")
+```
+
+
+```{r}
+ggplot(lagged_google, aes(x=expected_decrease, y=lagged_R0, color=state)) +
+  geom_point() +
+  facet_wrap(~state) +
+  labs(title="Expected Decrease from Google Mobility Data and R0, Lagged by Two Weeks, by State") +
+  theme(legend.position="none") +
+  ggsave("google_mobility_r0_lagged.png")
+```
 ```
