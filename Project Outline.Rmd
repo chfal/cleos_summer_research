@@ -1,0 +1,66 @@
+---
+title: "Project Outline: The Efficacy of Public Health Measures Used to Contain the Coronavirus"
+author: "Cleo Falvey, Megan Doman, Jamaree Moore"
+date: "7/16/2020"
+output: pdf_document
+---
+
+## Abstract (still developing, will develop further as analyses are finalized)
+
+The novel coronavirus Sars Cov-2 has tremendously impacted society as public health measures such as physical distancing and mask wearing were implemented to control the epidemic. The length and intensity of public health policies, such as physical distancing and mask wearing, largely varied at the state level. In this paper, we examine the effect of such policies on the R0, or net reproductive value, of the virus. We also examine weather as a factor due to hypotheses that the coronavirus might display seasonality like other respiratory viruses. We found that there was a significant correlation between physical distancing measures and R0 when analyzed with a 14-day delay to accommodate for the incubation period of the virus. These results add to a quickly-growing body of work regarding the efficacy of physical distancing and mask wearing as means to control viral spread in the absence of a vaccine or effective treatment.
+
+## Introduction, citing the appropriate literature
+
+* Coronavirus Pandemic Background
+* R_0 as a method to judge the size of epidemics
+* Social distancing
+* Mask wearing
+* Weather
+
+## Methods (cite packages and methodologies)
+* Data sources
+ + Johns Hopkins Dataset
+ + Google and Apple Mobility 
+ + Masks4All
+ + Weather data
+ 
+* Statistical Methods
++ Multiple linear regression
++ Correlation
++ Anova (?)
+
+## Results
+* Show graph about masks (below)
+* Show other graphs about mobility data (possibly, if I can get the data to "behave")
+* Show gifs of mobility data changing (maybe overlaid with R0 graphs moving beneath them? Maybe this is too busy)
+* Show correlation plot from corrplot package (haven't made this yet, will make this by Friday)
+
+```{r, echo=FALSE, out.width="50%", fig.align="center"}
+knitr::include_graphics("state_w_masks_r0.png")
+```
+
+## Discussion
+
+* Restating results in context of pandemic
++ How results could be used to help stop spread
++ Inform policy/individual actions
+
+* Caveats
++ Confounding variables (by state) ; more robust analysis needed
++ Simpson's Paradox
++ A currently unfolding event, so there is new data everyday
++ R0 is an imperfect measure to determine the progress of an outbreak
++ Mobility data is representative of a good portion of the population but not all of it
++ Imperfect federal response leads to patchwork response (uneven) across states
+
+* Directions for Future Study
++ Call for more robust analysis
++ Call for informed public health policy
+
+## Conclusion
+* Restate abstract and results
+* Big takeaways: i.e. social distancing efficacy, mask efficacy
+
+## Citations
+
+* All citations from paper that are currently there (don't want to make this outline super long, but currently in the working document which is found at: https://docs.google.com/document/d/1sWXKRksS3wkMnV-o9MRxz2JjNcaJJ8X9Efrg44-mPHw/edit)
