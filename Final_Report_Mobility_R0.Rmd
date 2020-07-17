@@ -215,7 +215,7 @@ cases_with_pop <- left_join(original_data, pop_est) %>%
   summarize_if(is.numeric, sum, na.rm=TRUE)
 
 #selecting only the case counts, population data, and state to make a new matrix
-case_counts_raw = cases_with_pop[,30:175]
+case_counts_raw = cases_with_pop[,30:183]
 case_counts_raw <- as.matrix(case_counts_raw)
 rownames(case_counts_raw) = cases_with_pop$Province_State
 
@@ -239,7 +239,7 @@ mGT = generation.time("gamma", c(3, 1.5))
 case_counts[case_counts<0]=0
 
 # removed all cases where you didn't know what the population was
-case_counts <- case_counts[case_counts[,136] !=0,]
+case_counts <- case_counts[case_counts[,153] !=0,]
 
 weekly <- seq(0,ncol(case_counts), by=7)
 
@@ -253,7 +253,7 @@ r0 <- data.frame(State=character(), Week=character(),R0=double())
 
 # implement case count to be lower
 for (i in 1:nrow(case_counts)){ # we are going to iterate over all the states
-  for (j in 1:20){ #add cases to be cumulative across the week
+  for (j in 1:21){ #add cases to be cumulative across the week
     x=case_counts[i,(weekly[j]+1):weekly[j+1]]
     if (sum(x)<=10) { #cutoff is now less than 10 cases in a week
       R0=NA
@@ -277,14 +277,14 @@ r0$R0[r0$R0>quantile(r0$R0, .95, na.rm=T)] <- NA
 r0$R0[r0$R0<quantile(r0$R0, .05, na.rm=T)] <- NA
 
 #add labels to each week's start date
-Week <- as.character(c(1:20))
-dates <- colnames(case_counts[,c(1,8,15,22,29,36,43,50,57,64,71,78,85,92,99,106,113,120,127,134)])
+Week <- as.character(c(1:21))
+dates <- colnames(case_counts[,c(1,8,15,22,29,36,43,50,57,64,71,78,85,92,99,106,113,120,127,134, 141)])
 
 positions <- data.frame(Week, dates)
 
 #write csv to save it
 r0 <- left_join(r0, positions)
-write_csv(r0, "result_data_frame.csv")
+write_csv(r0, "r0_result_data_frame.csv")
 ```
 
 #Correlating R0 with Mobility Data
@@ -292,7 +292,7 @@ write_csv(r0, "result_data_frame.csv")
 Now we are going to correlate our R0 scores by week with our mobility scores by week for Apple and Google. We are going to do this using the linear modelling function of R. Even though the distributions of the mobility scores, as well as the R0, are not normal (and therefore won't be perfectly straight), we can still use this method for simple correlations.
 ```{r, error=FALSE, message=FALSE, warning=FALSE, out.width="100%"}
 # this data is the result data frame from the above for loop, but read directly in for convenience because the for loop takes some time to run. 
-r0 <- read_csv("result_data_frame.csv") %>%
+r0 <- read_csv("r0_result_data_frame.csv") %>%
   mutate(date=as.Date(dates, "%m/%d/%y")) %>%
   dplyr::select(c("State","R0","date"))
 
@@ -368,4 +368,38 @@ write_csv(final_apple_corr, "final_apple_corr.csv")
 
 ```
 
+# Percent Increase in Cases
 
+```{r}
+percent_increase <- data.frame(State=character(), Week=character(),sum=double())
+i=1
+j=1
+k=1
+l=1
+
+for (i in 1:nrow(case_counts)){ # we are going to iterate over all the states
+  for (j in 1:21){ #add cases to be cumulative across the week
+    Weekly_Sum=sum(case_counts[i,(weekly[j]+1):weekly[j+1]])
+    percent_increase[l,1]=rownames(case_counts)[i]
+    percent_increase[l,2]=j
+    percent_increase[l,3]=Weekly_Sum
+    l=l+1
+  }
+}
+
+Week <- as.character(c(1:21))
+dates <- colnames(case_counts[,c(1,8,15,22,29,36,43,50,57,64,71,78,85,92,99,106,113,120,127,134, 141)])
+
+positions <- data.frame(Week, dates)
+
+percent_increase <- left_join(percent_increase, positions) %>%
+  rename(weekly_increase = sum)
+
+percent_increase <-
+  percent_increase %>%
+  mutate(weekly_increase = as.numeric(weekly_increase))
+
+percent_increase <- percent_increase %>%
+  group_by(State) %>%
+  mutate(pct_change = ((weekly_increase/lag(weekly_increase)-1)*100))
+```

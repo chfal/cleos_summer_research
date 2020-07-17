@@ -5,7 +5,7 @@ date: "6/30/2020"
 output: html_document
 ---
 
-Here are the packages needed.
+# Here are the packages needed.
 
 ```{r}
 library(readr) # for reading data
@@ -16,89 +16,31 @@ library(glmmTMB) # for analysis
 library(gamm4) # for analysis
 library(xts) # to cut 
 library(ggplot2)
+library(corrplot)
 ```
 
 
 ```{r}
-# read in data
-final_apple <- read_csv("final_apple_corr.csv")
-
-final_google <- read_csv("final_google_corr.csv")
+total_data <- read_csv("total_joined_data.csv")
 ```
 
-```{r}
-# make two for google data: one with all means across column and one with all means except housing increase
-final_google$expected_decrease <- base::rowMeans(final_google[,c(3,4,6,7,8)])
+# Let's answer some questions about the data.
 
-final_google$all_mean <- rowMeans(final_google[,c(3,4,5,6,7,8)])
+## 1) Is there a correlation between Google and Apple mobility data?
+
+```{r}
+lm(total_data$expected_decrease ~ total_data$value)
+summary(lm(total_data$expected_decrease ~ total_data$value))
+plot(total_data$expected_decrease, total_data$value)
 ```
 
+# Is there a correlation between R0 and percent growth?
+# Answer: Yes!
 
 ```{r}
-# corelation offset by two weeks using lag operator
-lag <- final_google %>%
-  dplyr::select(c("start_date", "state", "R0")) %>%
-  group_by(state) %>%
-  mutate(lagged_R0 = lag(R0)) %>%
-  mutate(lagged_R0 = lag(lagged_R0))
-
-
-lagged_google <- left_join(lag, final_google, by=c("start_date", "state", "R0"))
-lagged_apple <- left_join(lag, final_apple, by=c("start_date", "state", "R0"))
-```
-
-Now we are going to correllate with lagged data. We still have a lot of noise. We should think about binning and also controlling by state? Could state be a categorical factor which might explain a lot of the variation?
-
-```{r}
-plot(lagged_google$lagged_R0, lagged_google$expected_decrease)
-lm(lagged_google$lagged_R0 ~ lagged_google$expected_decrease, na.rm=T)
-summary(lm(lagged_google$lagged_R0 ~ lagged_google$expected_decrease, na.rm=T))
-#adjusted r-squareed is .059
-```
-
-Comparing we can see that there is 
-
-```{r}
-plot(lagged_apple$lagged_R0, lagged_apple$value)
-lm(lagged_apple$lagged_R0~lagged_apple$value)
-summary(lm(lagged_apple$lagged_R0~lagged_apple$value))
-```
-
-```{r}
-aov(lagged_apple$lagged_R0 ~ lagged_apple$value*lagged_apple$temp_in_K)
-lm(lagged_apple$lagged_R0 ~ lagged_apple$temp_in_K)
-```
-
-```{r}
-plot(1/lagged_apple$temp_in_K, log(lagged_apple$lagged_R0))
-summary(lm(log(lagged_apple$lagged_R0) ~ 1/lagged_apple$temp_in_K))
-
-```
-
-
-# Mobility and Masks - Google
-
-```{r}
-aov(lagged_google$R0 ~ lagged_google$expected_decrease + lagged_google$masks_worn)
-summary(aov(lagged_google$R0 ~ lagged_google$expected_decrease + lagged_google$masks_worn))
-```
-
-# Mobility and Masks - Apple
-```{r}
-aov(lagged_apple$R0 ~ lagged_apple$value + lagged_apple$masks_worn)
-summary(aov(lagged_apple$R0 ~ lagged_apple$value + lagged_apple$masks_worn))
-```
-
-# States and Mobility Data - Apple
-```{r}
-aov(lagged_apple$R0 ~ lagged_apple$value + lagged_apple$state)
-summary(aov(lagged_apple$R0 ~ lagged_apple$value + lagged_apple$state))
-```
-
-# States and Mobility - Google
-```{r}
-aov(lagged_google$R0 ~ lagged_google$expected_decrease + lagged_google$state)
-summary(aov(lagged_google$R0 ~ lagged_google$expected_decrease + lagged_google$state))
+plot(total_data$R0, total_data$pct_change)
+lm(total_data$R0 ~total_data$pct_change)
+summary(lm(total_data$R0 ~total_data$pct_change))
 ```
 
 
@@ -107,20 +49,26 @@ summary(aov(lagged_google$R0 ~ lagged_google$expected_decrease + lagged_google$s
 ## Mask Data on R0 by State
 
 ```{r, out.width="100%"}
-ggplot(lagged_google, aes(lagged_R0, fill=state)) +
+ggplot(total_data, aes(R0, fill=state)) +
   geom_boxplot() +
   facet_wrap(~state) +
   theme(legend.position="none", axis.title.y=element_blank(), axis.text.y=element_blank(), axis.ticks.y=element_blank()) +
-  labs(title="R0 by State") +
-  ggsave("state_r0.png")
+  labs(title="R0 by State")
+
+ggplot(total_data, aes(pct_change, fill=state)) +
+  geom_boxplot() +
+  facet_wrap(~state) +
+  theme(legend.position="none", axis.title.y=element_blank(), axis.text.y=element_blank(), axis.ticks.y=element_blank()) +
+  labs(title="Percent Change in Weekly Cases by State")
 
 #all states
-ggplot(lagged_google, aes(x=masks_worn, y=lagged_R0)) +
+ggplot(total_data, aes(x=masks_worn, y=lagged_R0)) +
   geom_boxplot() +
   facet_wrap(~state)
 
+
 # this is too crazy, let's make it states with mask mandatesa
-states_w_masks <- lagged_google %>%
+states_w_masks <- total_data %>%
   filter_at(vars(state), any_vars(TRUE %in% c(masks_worn)))
 
 ggplot(data=states_w_masks, aes(x=masks_worn, y=R0, fill=masks_worn)) +
@@ -135,33 +83,19 @@ ggplot(data=states_w_masks, aes(x=masks_worn, y=R0, fill=masks_worn)) +
 ## Weather and R0 by State
 
 ```{r, out.width="100%"}
-ggplot(lagged_apple, aes(x=temp_in_K, y=R0, color=state)) + 
+ggplot(total_data, aes(x=temp_in_K, y=R0, color=state)) + 
   geom_point() +
   facet_wrap(~state) +
   labs(title="Weather and R0 by State") +
   theme(legend.position="none") +
   ggsave("weather_r0.png")
-
-
 ```
 
 
 ```{r, out.width="100%"}
-ggplot(lagged_apple, aes(x=value, y=lagged_R0, color=state)) +
-  geom_point() +
-  facet_wrap(~state) +
-  labs(title="Apple Mobility Data and R0, Lagged by Two Weeks, by State") +
-  theme(legend.position="none") +
-  ggsave("apple_mobility_r0_lagged.png")
-```
-
-
-```{r}
-ggplot(lagged_google, aes(x=expected_decrease, y=lagged_R0, color=state)) +
-  geom_point() +
-  facet_wrap(~state) +
-  labs(title="Expected Decrease from Google Mobility Data and R0, Lagged by Two Weeks, by State") +
-  theme(legend.position="none") +
-  ggsave("google_mobility_r0_lagged.png")
-```
+total_data %>%
+  filter(state=="Illinois" || state=="Indiana") %>%
+  ggplot() +
+  geom_point(aes(start_date, R0, color=state)) +
+  geom_vline(xintercept=5/1/2020)
 ```
