@@ -1,0 +1,263 @@
+---
+title: "analyses_redone"
+author: "chfal"
+date: "7/22/2020"
+output: html_document
+---
+
+# Libraries used
+
+```{r, warning=FALSE, message=FALSE, out.width="100%"}
+knitr::opts_chunk$set
+library(readr) # for reading data
+library(corrplot) # for making a corrplot
+library(dplyr) # for tidying
+library(ggplot2) # for plotting
+library(lubridate) # for working with dates
+library(urbnmapr) # for getting shapefiles
+library(gganimate) # for making gifs that move!
+library(sf) # for shapefiles
+```
+
+# Reading in and final cleaning of data
+
+```{r}
+# read in total data
+total_data <- read_csv("total_joined_data.csv")
+
+# cut quantiles
+total_data$R0[total_data$R0>quantile(total_data$R0, .95, na.rm=T)] <- NA
+total_data$R0[total_data$R0<quantile(total_data$R0, .05, na.rm=T)] <- NA
+total_data$lagged_R0[total_data$lagged_R0>quantile(total_data$lagged_R0, .95, na.rm=T)] <- NA
+total_data$lagged_R0[total_data$lagged_R0<quantile(total_data$lagged_R0, .05, na.rm=T)] <- NA
+
+total_data$month <- month(total_data$start_date, label=TRUE)
+total_data <- total_data %>%
+  group_by(state) %>%
+  mutate(lagged_R0_3 = lag(lagged_R0))
+```
+
+# What is the trend? We see R0 decrease over time.
+
+```{r}
+total_data %>%
+  filter(!is.na(month)) %>%
+  ggplot(aes(x=value, y=lagged_R0, color=month)) +
+  geom_point() +
+  labs(x="Apple Mobility Social Distancing Metrics", y="R0 with two-week lag introduced", title="Mobility Scores and R0", subtitle="with two-week lag to account for incubation period of virus") +
+  geom_vline(xintercept=100, color="red") +
+  ggsave("r0_mobility_month.png")
+
+total_data %>%
+  group_by(Week) %>%
+  ggplot(aes(x=start_date, y=R0, group=start_date, fill=start_date)) +
+  theme(legend.position="none") +
+  geom_boxplot() +
+  labs(x="Date", "R0", title="Boxplots of R0 by Date") +
+  ggsave("R0_date.png")
+```
+
+# The most important factor in R0 change was not state or weather, but actually the date.
+
+```{r}
+lm(lagged_R0 ~ value + state, total_data)
+summary(lm(lagged_R0 ~ value + state, total_data))
+
+total_data2 <- total_data %>%
+  mutate(start_date_factor = as.factor(total_data$start_date))
+
+lm(lagged_R0 ~ state + start_date, total_data)
+summary(lm(lagged_R0 ~ start_date_factor, total_data2))
+
+```
+
+# Not a cohesive graph shows breakdown by state.
+
+```{r}
+total_data %>%
+  ggplot(aes(x=value, y=lagged_R0, color=state)) +
+  geom_point() +
+  theme(legend.position="none")
+```
+
+# Focuses on Individual States
+
+```{r}
+total_data %>%
+  filter(state=="Massachusetts") %>%
+  ggplot(aes(x=value, y=lagged_R0, color=month)) +
+  geom_point(size=4) +
+  labs(x="Apple Mobility Social Distancing Metrics", y="R0 with two-week lag introduced", title="Mobility Scores and R0 in Massachusetts", subtitle="with two-week lag to account for incubation period of virus") +
+  geom_vline(xintercept=100, color="red") +
+  ggsave("Massachusetts.png")
+
+total_data %>%
+  filter(state=="New York")%>%
+  ggplot(aes(x=value, y=lagged_R0, color=month)) +
+  geom_point()
+
+total_data %>%
+  filter(state=="Florida")%>%
+  ggplot(aes(x=value, y=lagged_R0, color=month)) +
+  geom_point(size=4) +
+  labs(x="Apple Mobility Social Distancing Metrics", y="R0 with two-week lag introduced", title="Mobility Scores and R0 in Florida", subtitle="with two-week lag to account for incubation period of virus") +
+  geom_vline(xintercept=100, color="red")
+  ggsave("florida.png")
+
+
+total_data %>%
+  filter(state=="Arizona")%>%
+  ggplot(aes(x=value, y=lagged_R0, color=month)) +
+  geom_point()
+
+```
+
+# In New York, does the R0 seem to follow a trend with mobility scores?
+
+```{r}
+total_data %>%
+  filter(state=="New York") %>%
+  ggplot(aes(x=start_date)) +
+  geom_smooth(aes(y=lagged_R0), color="blue") +
+  geom_smooth(aes(y=log(value), color='orange')) +
+  geom_smooth(aes(y=(lagged_R0_3), color="green"))
+```
+
+# Do R0 and mobility seem to follow a trend?
+
+```{r}
+total_data %>%
+  ggplot(aes(start_date)) +
+  geom_boxplot(aes(y=lagged_R0, group=start_date, fill="R0")) +
+  geom_boxplot(aes(y=log(value), group=start_date, fill="log(mobility score)")) +
+  labs(x="Start Date", y="log(mobility score), R0", title="R0 and the Log of Mobility Scores Lagged by Two Weeks") +
+  ggsave("r0_mobility.png")
+  
+```
+
+
+# What about social distancing and R0?
+
+```{r}
+total_data %>%
+  ggplot(aes(y=value, x=temp_in_c)) +
+  geom_smooth(method="lm") +
+  facet_wrap(~state) +
+  labs(x="Temperature in Celsius", y="Mobility score from Apple mobility report", title="Apple Mobility Values vs. Temperature by State") +
+  ggsave("weather_mobility.jpg")
+
+lm(total_data$value ~ total_data$temp_in_c + total_data$state)
+summary(lm(total_data$value ~ total_data$temp_in_c + total_data$state))
+
+total_data %>%
+  filter(state %in% c("Arizona", "Alaska","Arkansas","California","Florida","Guam","Hawaii","Idaho","Louisiana","Maryland","Massachusetts","Montana","New Jersey","New York","Puerto Rico","South Dakota","Texas", "Virgin Islands", "Wyoming")) %>%
+  ggplot(aes(y=value, x=temp_in_c)) +
+  geom_smooth(method="lm", color="deeppink") +
+  facet_wrap(~state) +
+  labs(x="Temperature in Celsisus", y="Mobility score from Apple Mobility Report", title = "States with Significant Temperature/Mobility Score Associations") +
+  ggsave("significant_temps.jpeg")
+```
+
+```{r}
+plot(total_data$value, total_data$temp_in_K)
+lm(total_data$value ~ total_data$temp_in_K)
+summary(lm(total_data$value ~ total_data$temp_in_K))
+
+```
+
+
+# What about weather and R0?
+
+```{r}
+total_data %>%
+  ggplot(aes(temp_in_c, lagged_R0)) +
+  geom_smooth(method="lm") +
+  facet_wrap(~state)
+
+complement <- total_data %>%
+  filter(state %in% c("Arizona","Arkansas","Delaware","Georgia","Hawaii","Louisiana","Mississippi","North Carolina","Oklahoma","South Carolina","Texas", "District of Columbia", "Virgin Islands", "Guam"))
+
+total_data %>%
+  setdiff(complement) %>%
+  ggplot(aes(temp_in_c, lagged_R0)) +
+  geom_smooth(method="lm", color="darkgreen") +
+  facet_wrap(~state) +
+  labs(x="Temperature in Celsius", y="R0 Lagged by Two Weeks", title="R0 and Temperature by State for Significant States") +
+  ggsave("r0_temp.jpeg")
+  
+lm(temp_in_c ~ lagged_R0 + state, total_data)
+summary(lm(temp_in_c ~ lagged_R0 + state, total_data))
+
+```
+# Making a corrplot
+
+```{r}
+corr <- cor(total_data[,c(5,4,8,10,11,12,13,14,15,16,17)], use="complete.obs")
+
+corrplot(corr, type="upper", addrect=3)
+
+corr <- cor(total_data[,c(5,4,8,10,11,12,13,14,15,16,17)], use="complete.obs")
+
+corr2 <- cor(total_data[,c(19,4,8,10,11,12,13,14,15,16,17)], use="complete.obs")
+corrplot(corr2, type="upper", addrect=3)
+
+plot(total_data$value, total_data$lagged_R0)
+
+plot(total_data$value, total_data$pct_change)
+
+```
+
+
+# Masks 
+
+```{r}
+total_data %>%
+  group_by(state) %>%
+  filter_at(vars(state), any_vars(TRUE %in% masks_worn)) %>%
+  ggplot(aes(x=masks_worn, y=R0, fill=masks_worn)) +
+  geom_boxplot() +
+  theme(legend.position="none") +
+  facet_wrap(~state)
+```
+
+# Remaking .gifs because of bad workflow :)
+
+```{r}
+states_sf <- get_urbn_map("states",sf=TRUE)  %>%
+  rename("state"="state_name") %>%
+  st_as_sf()
+    
+final_sf <- left_join(total_data, states_sf) %>%
+  st_as_sf()
+```
+
+# Retail
+
+```{r}
+retail <- ggplot() +
+  geom_sf(data=states_sf) +
+  geom_sf(data=final_sf, aes(fill=retail_and_recreation_perc_ch)) +
+  labs(fill="% change retail", title="date: {current_frame}", subtitle="Percent Change in Retail/Recreation from Google Mobility Data") +
+  theme(legend.title = element_text("% change retail")) +
+  scale_fill_continuous(type="viridis") +
+  transition_manual(start_date)
+
+animate(retail)
+
+anim_save("retail.gif")
+```
+
+
+```{r}
+residential <- ggplot() +
+  geom_sf(data=states_sf) +
+  geom_sf(data=final_sf, aes(fill=residential_perc_ch)) +
+  labs(fill="% change residential", title="date: {current_frame}", subtitle="Percent Change in Residential Movement from Google Mobility Data") +
+  theme(legend.title = element_text("% change residential")) +
+  scale_fill_continuous(type="viridis") +
+  transition_manual(start_date)
+
+animate(residential)
+
+anim_save("residential.gif")
+```
