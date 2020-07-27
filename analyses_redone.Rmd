@@ -5,7 +5,7 @@ date: "7/22/2020"
 output: html_document
 ---
 
-# Libraries used
+# Packages used
 
 ```{r, warning=FALSE, message=FALSE, out.width="100%"}
 knitr::opts_chunk$set
@@ -213,11 +213,14 @@ plot(total_data$value, total_data$pct_change)
 ```{r}
 total_data %>%
   group_by(state) %>%
-  filter_at(vars(state), any_vars(TRUE %in% masks_worn)) %>%
-  ggplot(aes(x=masks_worn, y=R0, fill=masks_worn)) +
+  filter(state %in% c("California","Connecticut","Delaware","Hawaii","Illinois","Maine","Maryland","Massachusetts","Michigan","New Jersey","New Mexico","New York","North Carolina","Pennsylvania", "Puerto Rico","Rhode Island","Virginia","Washington")) %>%
+  ggplot(aes(x=masks_worn, y=lagged_R0, fill=masks_worn)) +
   geom_boxplot() +
   theme(legend.position="none") +
-  facet_wrap(~state)
+  facet_wrap(~state) +
+  scale_x_discrete(labels=c("No Masks","Masks")) +
+  labs(x="Masks Worn?", y="R0 with 2-week lag",title="R0 (2-week lag) Before and After Mask Wearing") +
+  ggsave("masks_r0.jpeg")
 ```
 
 # Remaking .gifs because of bad workflow :)
@@ -260,4 +263,11 @@ residential <- ggplot() +
 animate(residential)
 
 anim_save("residential.gif")
+```
+
+
+# Compare models? 
+
+```{r}
+
 ```
